@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import { StringValue } from 'ms';
 
 @Injectable()
 export class ConfigService {
@@ -33,8 +34,8 @@ export class ConfigService {
     return this.configService.get<string>('JWT_SECRET') || '';
   }
 
-  get jwtExpiration(): string {
-    return this.configService.get<string>('JWT_EXPIRATION') || '24h';
+  get jwtExpiration(): StringValue {
+    return this.configService.get<StringValue>('JWT_EXPIRATION') || '24h';
   }
 
   get rabbitMqUrl(): string {
