@@ -14,6 +14,7 @@ import {
 import { Employee } from './database/entities/employee.entity';
 import { SeedService } from './database/seeds/seeds';
 import { AuthModule } from './auth/auth.module';
+import { EmployeesModule } from './employees/employees.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AuthModule } from './auth/auth.module';
     }),
     TypeOrmModule.forFeature([Employee, Department, JobPosition, DayOff]),
     AuthModule,
+    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],
