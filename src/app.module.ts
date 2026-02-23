@@ -12,6 +12,7 @@ import {
   JobPosition,
 } from './database/entities';
 import { Employee } from './database/entities/employee.entity';
+import { EmployeeContact } from './database/entities/employee-contact.entity';
 import { SeedService } from './database/seeds/seeds';
 import { AuthModule } from './auth/auth.module';
 import { EmployeesModule } from './employees/employees.module';
@@ -34,12 +35,19 @@ import { EmployeesModule } from './employees/employees.module';
           DayOff,
           Department,
           Employee,
+          EmployeeContact,
           JobPosition,
         ],
         synchronize: true,
       }),
     }),
-    TypeOrmModule.forFeature([Employee, Department, JobPosition, DayOff]),
+    TypeOrmModule.forFeature([
+      Employee,
+      EmployeeContact,
+      Department,
+      JobPosition,
+      DayOff,
+    ]),
     AuthModule,
     EmployeesModule,
   ],

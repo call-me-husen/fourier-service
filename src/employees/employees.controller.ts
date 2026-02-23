@@ -16,6 +16,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Employee } from '../database/entities/employee.entity';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { ImageUploadPipe } from '../image-upload/image-upload.pipe';
+import { EmployeeContactDto } from './dto/employee-contact.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('api/employees')
 @UseGuards(JwtGuard)
@@ -27,17 +29,24 @@ export class EmployeesController {
     return this.employeesService.getProfile(user.id);
   }
 
-  @Patch('profile')
+  @Patch('contact')
   async updateProfile(
     @CurrentUser() user: Employee,
-    @Body() updateData: { phone?: string; password?: string },
+    @Body() updateData: EmployeeContactDto,
   ) {
-    const employee = await this.employeesService.updateProfile(
-      user.id,
-      updateData,
-    );
+    await this.employeesService.updateContact(user.id, updateData);
 
-    return employee;
+    return;
+  }
+
+  @Patch('change-password')
+  async changePassword(
+    @CurrentUser() user: Employee,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    await this.employeesService.changePassword(user.id, changePasswordDto);
+
+    return;
   }
 
   @Post('profile/photo')

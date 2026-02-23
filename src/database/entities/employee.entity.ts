@@ -7,10 +7,12 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { Department } from './department.entity';
 import { JobPosition } from './job-position.entity';
 import { Attendance } from './attendance.entity';
+import { EmployeeContact } from './employee-contact.entity';
 
 export enum AccountRole {
   STANDARD = 'standard',
@@ -29,7 +31,7 @@ export class Employee {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
+  @Column({ type: 'varchar', unique: true })
   employeeNumber!: string;
 
   @Column({ type: 'varchar', length: 255 })
@@ -46,9 +48,6 @@ export class Employee {
 
   @Column({ name: 'photo_url', type: 'varchar', length: 500, nullable: true })
   photoUrl!: string | null;
-
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  phone!: string | null;
 
   @Column({
     type: 'enum',
@@ -85,6 +84,15 @@ export class Employee {
 
   @OneToMany(() => Attendance, (attendance) => attendance.employee)
   attendances!: Attendance[];
+
+  @Column({ type: 'simple-enum', enum: ['male', 'female'] })
+  gender!: 'male' | 'female';
+
+  @Column({ type: 'date' })
+  dateOfBirth!: Date;
+
+  @OneToOne(() => EmployeeContact, (contact) => contact.employee)
+  contact!: EmployeeContact;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

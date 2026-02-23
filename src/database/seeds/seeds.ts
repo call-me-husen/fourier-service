@@ -6,6 +6,7 @@ import {
   AccountRole,
   EmploymentType,
 } from '../entities/employee.entity';
+import { EmployeeContact } from '../entities/employee-contact.entity';
 import { Department } from '../entities/department.entity';
 import { JobPosition } from '../entities/job-position.entity';
 import { DayOff } from '../entities/day-off.entity';
@@ -16,6 +17,8 @@ export class SeedService implements OnModuleInit {
   constructor(
     @InjectRepository(Employee)
     private employeeRepository: Repository<Employee>,
+    @InjectRepository(EmployeeContact)
+    private contactRepository: Repository<EmployeeContact>,
     @InjectRepository(Department)
     private departmentRepository: Repository<Department>,
     @InjectRepository(JobPosition)
@@ -67,7 +70,8 @@ export class SeedService implements OnModuleInit {
     });
 
     const hashedPassword = await bcrypt.hash('password123', 10);
-    await this.employeeRepository.save({
+
+    const admin = await this.employeeRepository.save({
       firstName: 'Admin',
       lastName: 'User',
       employeeNumber: 'EMP0001',
@@ -77,9 +81,17 @@ export class SeedService implements OnModuleInit {
       employmentType: EmploymentType.FULLTIME,
       department: engineering,
       position: lead,
+      gender: 'male' as const,
+      dateOfBirth: new Date('1990-01-15'),
+    });
+    await this.contactRepository.save({
+      employeeNumber: admin.employeeNumber,
+      employee: admin,
+      phone: '+6281234567890',
+      address: 'Jl. Sudirman No. 1, Jakarta',
     });
 
-    await this.employeeRepository.save({
+    const john = await this.employeeRepository.save({
       firstName: 'John',
       lastName: 'Doe',
       employeeNumber: 'EMP0002',
@@ -89,9 +101,17 @@ export class SeedService implements OnModuleInit {
       employmentType: EmploymentType.FULLTIME,
       department: engineering,
       position: senior,
+      gender: 'male' as const,
+      dateOfBirth: new Date('1993-05-22'),
+    });
+    await this.contactRepository.save({
+      employeeNumber: john.employeeNumber,
+      employee: john,
+      phone: '+6281234567891',
+      address: 'Jl. Thamrin No. 5, Jakarta',
     });
 
-    await this.employeeRepository.save({
+    const jane = await this.employeeRepository.save({
       firstName: 'Jane',
       lastName: 'Smith',
       employeeNumber: 'EMP0003',
@@ -101,9 +121,17 @@ export class SeedService implements OnModuleInit {
       employmentType: EmploymentType.FULLTIME,
       department: hr,
       position: hrManager,
+      gender: 'female' as const,
+      dateOfBirth: new Date('1991-08-30'),
+    });
+    await this.contactRepository.save({
+      employeeNumber: jane.employeeNumber,
+      employee: jane,
+      phone: '+6281234567892',
+      address: 'Jl. Gatot Subroto No. 10, Jakarta',
     });
 
-    await this.employeeRepository.save({
+    const bob = await this.employeeRepository.save({
       firstName: 'Bob',
       lastName: 'Wilson',
       employeeNumber: 'EMP0004',
@@ -113,6 +141,14 @@ export class SeedService implements OnModuleInit {
       employmentType: EmploymentType.INTERN,
       department: marketing,
       position: junior,
+      gender: 'male' as const,
+      dateOfBirth: new Date('2000-03-10'),
+    });
+    await this.contactRepository.save({
+      employeeNumber: bob.employeeNumber,
+      employee: bob,
+      phone: '+6281234567893',
+      address: 'Jl. Kuningan No. 3, Jakarta',
     });
 
     const currentYear = new Date().getFullYear();
