@@ -9,23 +9,80 @@ import {
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
+  Query,
+  Param,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { EmployeesService } from './employees.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Employee } from '../database/entities/employee.entity';
+import { AccountRole, Employee } from '../database/entities/employee.entity';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { ImageUploadPipe } from '../image-upload/image-upload.pipe';
 import { EmployeeContactDto } from './dto/employee-contact.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RoleGuard } from '../auth/guards/role.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateEmployeeDto } from './dto/create.dto';
+import { UpdateEmployeeDto } from './dto/update.dto';
 
 @Controller('api/employees')
 @UseGuards(JwtGuard)
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
+  @Get()
+  @UseGuards(JwtGuard, RoleGuard)
+  @Roles(AccountRole.ADMIN)
+  async findAll(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('search') search?: string,
+    @Query('department') departmentId?: string,
+    @Query('position') positionId?: string,
+  ) {
+    return this.employeesService.findAll({
+      page,
+      limit,
+      search,
+      departmentId,
+      positionId,
+    });
+  }
+
+  @Get(':id')
+  @UseGuards(JwtGuard, RoleGuard)
+  @Roles(AccountRole.ADMIN)
+  async getEmployee(@Param('id') id: string) {
+    return this.employeesService.getProfile(id);
+  }
+
+  @Post()
+  @UseGuards(JwtGuard, RoleGuard)
+  @Roles(AccountRole.ADMIN)
+  async createEmployee(@Body() createEmployeeDto: CreateEmployeeDto) {
+    return this.employeesService.create(createEmployeeDto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtGuard, RoleGuard)
+  @Roles(AccountRole.ADMIN)
+  async updateEmployee(
+    @Param('id') id: string,
+    @Body() updateEmployeeDto: Partial<UpdateEmployeeDto>,
+  ) {
+    return this.employeesService.update(id, updateEmployeeDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtGuard, RoleGuard)
+  @Roles(AccountRole.ADMIN)
+  async deleteEmployee(@Param('id') id: string) {
+    return this.employeesService.delete(id);
+  }
+
   @Get('profile')
-  getProfile(@CurrentUser() user: Employee) {
+  async getProfile(@CurrentUser() user: Employee) {
     return this.employeesService.getProfile(user.id);
   }
 

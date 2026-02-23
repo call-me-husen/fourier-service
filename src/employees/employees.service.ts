@@ -7,6 +7,8 @@ import { ImageKitService } from '../image-kit/image-kit.service';
 import { EmployeeContactDto } from './dto/employee-contact.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { EmployeeContactsService } from '../employee-contacts/employee-contacts.service';
+import { CreateEmployeeDto } from './dto/create.dto';
+import { UpdateEmployeeDto } from './dto/update.dto';
 
 @Injectable()
 export class EmployeesService {
@@ -16,6 +18,116 @@ export class EmployeesService {
     private readonly imageKitService: ImageKitService,
     private readonly contactService: EmployeeContactsService,
   ) {}
+
+  async create(data: CreateEmployeeDto) {
+    const { password, photo, employeeNumber, ...employeeData } = data;
+
+    const existingEmployee = await this.employeeRepository.findOne({
+      where: { email: employeeData.email },
+    });
+
+    if (existingEmployee) {
+      throw new NotFoundException('Employee with this email already exists');
+    }
+    const existingEmployeeNumber = await this.employeeRepository.findOne({
+      where: { employeeNumber },
+    });
+
+    if (existingEmployeeNumber) {
+      throw new NotFoundException(
+        'Employee with this employee number already exists',
+      );
+    }
+
+    const photoUrl = await this.imageKitService.uploadFile(
+      photo,
+      '/employees/photos',
+    );
+
+    const employee = this.employeeRepository.create({
+      ...employeeData,
+      password: await bcrypt.hash(password, 10),
+      employeeNumber,
+      photoUrl,
+    });
+
+    return await this.employeeRepository.save(employee);
+  }
+
+  async update(employeeId: string, updateData: Partial<UpdateEmployeeDto>) {
+    const employee = await this.employeeRepository.findOne({
+      where: { id: employeeId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    Object.assign(employee, updateData);
+
+    return await this.employeeRepository.save(employee);
+  }
+
+  async delete(employeeId: string) {
+    const employee = await this.employeeRepository.findOne({
+      where: { id: employeeId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    await this.employeeRepository.remove(employee);
+
+    return { message: 'Employee deleted successfully' };
+  }
+
+  async findAll(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    departmentId?: string;
+    positionId?: string;
+  }) {
+    const { page = 1, limit = 10, search, departmentId, positionId } = query;
+    const offset = (page - 1) * limit;
+
+    const queryBuilder = this.employeeRepository
+      .createQueryBuilder('employee')
+      .leftJoinAndSelect('employee.department', 'department')
+      .leftJoinAndSelect('employee.position', 'position');
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(employee.firstName ILIKE :search OR employee.lastName ILIKE :search OR employee.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (departmentId) {
+      queryBuilder.andWhere('employee.departmentId = :departmentId', {
+        departmentId,
+      });
+    }
+
+    if (positionId) {
+      queryBuilder.andWhere('employee.positionId = :positionId', {
+        positionId,
+      });
+    }
+
+    const [data, total] = await queryBuilder
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      lastPage: Math.ceil(total / limit),
+    };
+  }
 
   async getProfile(employeeId: string): Promise<Employee> {
     const employee = await this.employeeRepository.findOne({
