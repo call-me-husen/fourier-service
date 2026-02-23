@@ -20,7 +20,7 @@ export class AuthService {
     });
 
     if (!employee) {
-      throw new ForbiddenException('Invalid credentials');
+      throw new ForbiddenException('Wrong email or password');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -29,7 +29,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new ForbiddenException('Invalid credentials');
+      throw new ForbiddenException('Wrong email or password');
     }
 
     const payload = {
