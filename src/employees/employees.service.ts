@@ -5,17 +5,16 @@ import { Employee } from '../database/entities/employee.entity';
 import bcrypt from 'bcryptjs';
 import { ImageKitService } from '../image-kit/image-kit.service';
 import { EmployeeContactDto } from './dto/employee-contact.dto';
-import { EmployeeContact } from '../database/entities/employee-contact.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { EmployeeContactsService } from '../employee-contacts/employee-contacts.service';
 
 @Injectable()
 export class EmployeesService {
   constructor(
     @InjectRepository(Employee)
     private employeeRepository: Repository<Employee>,
-    @InjectRepository(EmployeeContact)
-    private contactRepository: Repository<EmployeeContact>,
     private readonly imageKitService: ImageKitService,
+    private readonly contactService: EmployeeContactsService,
   ) {}
 
   async getProfile(employeeId: string): Promise<Employee> {
@@ -33,10 +32,7 @@ export class EmployeesService {
     return result as Employee;
   }
 
-  async updateContact(
-    employeeId: string,
-    updateData: EmployeeContactDto,
-  ): Promise<void> {
+  async updateContact(employeeId: string, updateData: EmployeeContactDto) {
     const employee = await this.employeeRepository.findOne({
       where: { id: employeeId },
     });
@@ -45,29 +41,9 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
-    const contact = await this.contactRepository.findOne({
-      where: { employee: { id: employee.id } },
-    });
+    await this.contactService.createOrUpdateContact(employeeId, updateData);
 
-    if (contact) {
-      contact.phone = updateData.phone;
-      contact.address = updateData.address;
-      contact.emergencyContact = updateData.emergencyContact;
-      contact.emergencyPhone = updateData.emergencyPhone;
-      await this.contactRepository.save(contact);
-    } else {
-      const newContact = this.contactRepository.create({
-        phone: updateData.phone,
-        address: updateData.address,
-        emergencyContact: updateData.emergencyContact,
-        emergencyPhone: updateData.emergencyPhone,
-      });
-      await this.contactRepository.save(newContact);
-    }
-
-    await this.employeeRepository.save(employee);
-
-    return;
+    return await this.employeeRepository.save(employee);
   }
 
   async changePassword(

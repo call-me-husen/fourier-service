@@ -16,6 +16,7 @@ import { EmployeeContact } from './database/entities/employee-contact.entity';
 import { SeedService } from './database/seeds/seeds';
 import { AuthModule } from './auth/auth.module';
 import { EmployeesModule } from './employees/employees.module';
+import { EmployeeContactsService } from './employee-contacts/employee-contacts.service';
 
 @Module({
   imports: [
@@ -52,6 +53,6 @@ import { EmployeesModule } from './employees/employees.module';
     EmployeesModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SeedService],
+  providers: [AppService, SeedService, EmployeeContactsService],
 })
 export class AppModule {}
