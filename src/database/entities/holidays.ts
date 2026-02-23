@@ -6,8 +6,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('days_off')
-export class DayOff {
+@Entity('holidays')
+export class Holiday {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

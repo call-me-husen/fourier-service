@@ -9,7 +9,6 @@ import {
 import { EmployeeContact } from '../entities/employee-contact.entity';
 import { Department } from '../entities/department.entity';
 import { JobPosition } from '../entities/job-position.entity';
-import { DayOff } from '../entities/day-off.entity';
 import bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -23,8 +22,6 @@ export class SeedService implements OnModuleInit {
     private departmentRepository: Repository<Department>,
     @InjectRepository(JobPosition)
     private jobPositionRepository: Repository<JobPosition>,
-    @InjectRepository(DayOff)
-    private dayOffRepository: Repository<DayOff>,
   ) {}
 
   async onModuleInit() {
@@ -150,26 +147,6 @@ export class SeedService implements OnModuleInit {
       phone: '+6281234567893',
       address: 'Jl. Kuningan No. 3, Jakarta',
     });
-
-    const currentYear = new Date().getFullYear();
-    await this.dayOffRepository.save({
-      name: 'New Year',
-      date: new Date(`${currentYear}-01-01`),
-      description: 'New Year Holiday',
-    });
-
-    await this.dayOffRepository.save({
-      name: 'Independence Day',
-      date: new Date(`${currentYear}-08-17`),
-      description: 'Independence Day of Indonesia',
-    });
-
-    await this.dayOffRepository.save({
-      name: 'Christmas',
-      date: new Date(`${currentYear}-12-25`),
-      description: 'Christmas Holiday',
-    });
-
     console.log('Seed completed successfully');
   }
 }

@@ -7,7 +7,7 @@ import { ConfigService } from './config/config.service';
 import {
   Attendance,
   ChangeLog,
-  DayOff,
+  Holiday,
   Department,
   JobPosition,
 } from './database/entities';
@@ -33,7 +33,7 @@ import { EmployeeContactsService } from './employee-contacts/employee-contacts.s
         entities: [
           Attendance,
           ChangeLog,
-          DayOff,
+          Holiday,
           Department,
           Employee,
           EmployeeContact,
@@ -47,7 +47,7 @@ import { EmployeeContactsService } from './employee-contacts/employee-contacts.s
       EmployeeContact,
       Department,
       JobPosition,
-      DayOff,
+      Holiday,
     ]),
     AuthModule,
     EmployeesModule,
