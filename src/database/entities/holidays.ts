@@ -14,7 +14,7 @@ export class Holiday {
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', unique: true })
   date!: Date;
 
   @Column({ type: 'text', nullable: true })
