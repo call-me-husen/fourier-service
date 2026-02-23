@@ -1,11 +1,4 @@
-import {
-  IsDate,
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsDate, IsEnum, IsString, MaxLength } from 'class-validator';
 import { AccountRole, EmploymentType } from '../../database/entities';
 import { Type } from 'class-transformer';
 
