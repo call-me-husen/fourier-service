@@ -6,10 +6,15 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
+  Index,
 } from 'typeorm';
 import { Employee } from './employee.entity';
 
 @Entity('attendances')
+@Unique('unique_employee_date', ['employeeId', 'date'])
+@Index('idx_employee_id', ['employeeId'])
+@Index('idx_date', ['date'])
 export class Attendance {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

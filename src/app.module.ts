@@ -19,6 +19,9 @@ import { EmployeesModule } from './employees/employees.module';
 import { HolidaysModule } from './holidays/holidays.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { JobPositionsModule } from './job-positions/job-positions.module';
+import { RabbitMqModule } from './rabbitmq/rabbitmq.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -34,7 +37,6 @@ import { JobPositionsModule } from './job-positions/job-positions.module';
         database: configService.dbName,
         entities: [
           Attendance,
-          ChangeLog,
           Holiday,
           Department,
           Employee,
@@ -44,18 +46,36 @@ import { JobPositionsModule } from './job-positions/job-positions.module';
         synchronize: true,
       }),
     }),
+    TypeOrmModule.forRootAsync({
+      name: 'logDb',
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.logDbHost,
+        port: configService.logDbPort,
+        username: configService.logDbUsername,
+        password: configService.logDbPassword,
+        database: configService.logDbName,
+        entities: [ChangeLog],
+        synchronize: true,
+      }),
+    }),
     TypeOrmModule.forFeature([
       Employee,
       EmployeeContact,
       Department,
       JobPosition,
       Holiday,
+      Attendance,
     ]),
+    RabbitMqModule,
     AuthModule,
     EmployeesModule,
     HolidaysModule,
     DepartmentsModule,
     JobPositionsModule,
+    AttendanceModule,
+    MonitoringModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

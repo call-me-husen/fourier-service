@@ -30,6 +30,30 @@ export class ConfigService {
     return this.configService.get<string>('LOG_DB_NAME') || '';
   }
 
+  get logDbHost(): string {
+    return this.configService.get<string>('LOG_DB_HOST') || 'localhost';
+  }
+
+  get logDbPort(): number {
+    return Number(this.configService.get<number>('LOG_DB_PORT')) || 5433;
+  }
+
+  get logDbUsername(): string {
+    return this.configService.get<string>('LOG_DB_USERNAME') || '';
+  }
+
+  get logDbPassword(): string {
+    return this.configService.get<string>('LOG_DB_PASSWORD') || '';
+  }
+
+  get rabbitMqUser(): string {
+    return this.configService.get<string>('RABBITMQ_USER') || 'guest';
+  }
+
+  get rabbitMqPassword(): string {
+    return this.configService.get<string>('RABBITMQ_PASSWORD') || 'guest';
+  }
+
   get jwtSecret(): string {
     return this.configService.get<string>('JWT_SECRET') || '';
   }

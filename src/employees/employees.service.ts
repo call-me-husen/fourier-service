@@ -9,6 +9,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { EmployeeContactsService } from '../employee-contacts/employee-contacts.service';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { UpdateEmployeeDto } from './dto/update.dto';
+import { RabbitMqService } from '../rabbitmq/rabbitmq.service';
 
 @Injectable()
 export class EmployeesService {
@@ -17,6 +18,7 @@ export class EmployeesService {
     private employeeRepository: Repository<Employee>,
     private readonly imageKitService: ImageKitService,
     private readonly contactService: EmployeeContactsService,
+    private readonly rabbitMqService: RabbitMqService,
   ) {}
 
   async create(data: CreateEmployeeDto) {
@@ -51,7 +53,25 @@ export class EmployeesService {
       photoUrl,
     });
 
-    return await this.employeeRepository.save(employee);
+    const savedEmployee = await this.employeeRepository.save(employee);
+
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: savedEmployee.id,
+      entity: 'employee',
+      action: 'create',
+      targetId: savedEmployee.id,
+      summary: `Employee ${savedEmployee.firstName} ${savedEmployee.lastName || ''} was created`,
+      changes: {
+        employeeNumber: savedEmployee.employeeNumber,
+        email: savedEmployee.email,
+        firstName: savedEmployee.firstName,
+        lastName: savedEmployee.lastName,
+      },
+    });
+
+    return savedEmployee;
   }
 
   async update(employeeId: string, updateData: Partial<UpdateEmployeeDto>) {
@@ -63,9 +83,23 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
+    const previousData = { ...employee };
     Object.assign(employee, updateData);
 
-    return await this.employeeRepository.save(employee);
+    const savedEmployee = await this.employeeRepository.save(employee);
+
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: employeeId,
+      entity: 'employee',
+      action: 'update',
+      targetId: employeeId,
+      summary: `Employee ${savedEmployee.firstName} ${savedEmployee.lastName || ''} was updated`,
+      changes: this.getChangedFields(previousData, savedEmployee),
+    });
+
+    return savedEmployee;
   }
 
   async delete(employeeId: string) {
@@ -77,7 +111,22 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
+    const employeeName = `${employee.firstName} ${employee.lastName || ''}`;
     await this.employeeRepository.remove(employee);
+
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: employeeId,
+      entity: 'employee',
+      action: 'delete',
+      targetId: employeeId,
+      summary: `Employee ${employeeName} was deleted`,
+      changes: {
+        employeeNumber: employee.employeeNumber,
+        email: employee.email,
+      },
+    });
 
     return { message: 'Employee deleted successfully' };
   }
@@ -155,7 +204,20 @@ export class EmployeesService {
 
     await this.contactService.createOrUpdateContact(employeeId, updateData);
 
-    return await this.employeeRepository.save(employee);
+    const savedEmployee = await this.employeeRepository.save(employee);
+
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: employeeId,
+      entity: 'employee',
+      action: 'update',
+      targetId: employeeId,
+      summary: `Employee contact for ${savedEmployee.firstName} ${savedEmployee.lastName || ''} was updated`,
+      changes: { contact: updateData },
+    });
+
+    return savedEmployee;
   }
 
   async changePassword(
@@ -182,6 +244,17 @@ export class EmployeesService {
     employee.password = await bcrypt.hash(changePasswordDto.newPassword, 10);
     await this.employeeRepository.save(employee);
 
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: employeeId,
+      entity: 'employee',
+      action: 'update',
+      targetId: employeeId,
+      summary: `Password changed for ${employee.firstName} ${employee.lastName || ''}`,
+      changes: { passwordChanged: true },
+    });
+
     return;
   }
 
@@ -204,6 +277,36 @@ export class EmployeesService {
 
     await this.employeeRepository.save(employee);
 
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: employeeId,
+      entity: 'employee',
+      action: 'update',
+      targetId: employeeId,
+      summary: `Photo updated for ${employee.firstName} ${employee.lastName || ''}`,
+      changes: { photoUpdated: true },
+    });
+
     return { photoUrl: employee.photoUrl };
+  }
+
+  private getChangedFields(
+    previous: Employee,
+    current: Employee,
+  ): Record<string, { from: unknown; to: unknown }> {
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    const sensitiveFields = ['password'];
+
+    const previousObj = previous as unknown as Record<string, unknown>;
+    const currentObj = current as unknown as Record<string, unknown>;
+
+    for (const key of Object.keys(currentObj)) {
+      if (sensitiveFields.includes(key)) continue;
+      if (previousObj[key] !== currentObj[key]) {
+        changes[key] = { from: previousObj[key], to: currentObj[key] };
+      }
+    }
+    return changes;
   }
 }
