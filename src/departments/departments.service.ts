@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -69,7 +73,7 @@ export class DepartmentsService {
 
     // Don't delete the department if it has employees
     if (department.employees && department.employees.length > 0) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         'Cannot delete department with assigned employees',
       );
     }

@@ -18,6 +18,7 @@ import { AuthModule } from './auth/auth.module';
 import { EmployeesModule } from './employees/employees.module';
 import { HolidaysModule } from './holidays/holidays.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { JobPositionsModule } from './job-positions/job-positions.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { DepartmentsModule } from './departments/departments.module';
     EmployeesModule,
     HolidaysModule,
     DepartmentsModule,
+    JobPositionsModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],
