@@ -26,6 +26,11 @@ export class ConfigService {
     return this.configService.get<string>('DB_NAME') || '';
   }
 
+  get dbSsl(): boolean {
+    const value = this.configService.get<string>('DB_SSL');
+    return value === 'true' || value === '1';
+  }
+
   get logDbName(): string {
     return this.configService.get<string>('LOG_DB_NAME') || '';
   }
@@ -44,6 +49,11 @@ export class ConfigService {
 
   get logDbPassword(): string {
     return this.configService.get<string>('LOG_DB_PASSWORD') || '';
+  }
+
+  get logDbSsl(): boolean {
+    const value = this.configService.get<string>('LOG_DB_SSL');
+    return value === 'true' || value === '1';
   }
 
   get rabbitMqUser(): string {

@@ -31,10 +31,11 @@ import { MonitoringModule } from './monitoring/monitoring.module';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.dbHost,
-        port: configService.dbPort,
+        port: configService.dbSsl ? undefined : configService.dbPort,
         username: configService.dbUsername,
         password: configService.dbPassword,
         database: configService.dbName,
+        ssl: configService.dbSsl ? { rejectUnauthorized: false } : false,
         entities: [
           Attendance,
           Holiday,
@@ -52,10 +53,11 @@ import { MonitoringModule } from './monitoring/monitoring.module';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.logDbHost,
-        port: configService.logDbPort,
+        port: configService.logDbSsl ? undefined : configService.logDbPort,
         username: configService.logDbUsername,
         password: configService.logDbPassword,
         database: configService.logDbName,
+        ssl: configService.logDbSsl ? { rejectUnauthorized: false } : false,
         entities: [ChangeLog],
         synchronize: true,
       }),
