@@ -17,6 +17,7 @@ import { SeedService } from './database/seeds/seeds';
 import { AuthModule } from './auth/auth.module';
 import { EmployeesModule } from './employees/employees.module';
 import { HolidaysModule } from './holidays/holidays.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { HolidaysModule } from './holidays/holidays.module';
     AuthModule,
     EmployeesModule,
     HolidaysModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],
