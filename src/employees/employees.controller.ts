@@ -12,6 +12,7 @@ import {
   Query,
   Param,
   Delete,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { EmployeesService } from './employees.service';
@@ -25,6 +26,7 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { UpdateEmployeeDto } from './dto/update.dto';
+import type { Response } from 'express';
 
 @Controller('api/employees')
 @UseGuards(JwtGuard)
@@ -48,6 +50,52 @@ export class EmployeesController {
       departmentId,
       positionId,
     });
+  }
+
+  @Get('profile')
+  async getProfile(@CurrentUser() user: Employee) {
+    return this.employeesService.getProfile(user.id);
+  }
+
+  @Patch('contact')
+  async updateProfile(
+    @CurrentUser() user: Employee,
+    @Body() updateData: EmployeeContactDto,
+  ) {
+    await this.employeesService.updateContact(user.id, updateData);
+
+    return;
+  }
+
+  @Patch('change-password')
+  async changePassword(
+    @CurrentUser() user: Employee,
+    @Body() changePasswordDto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.employeesService.changePassword(
+      user.id,
+      changePasswordDto,
+    );
+
+    res.clearCookie('access_token', { path: '/' });
+
+    return result;
+  }
+
+  @Post('profile/photo')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPhoto(
+    @CurrentUser() user: Employee,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+      }),
+      ImageUploadPipe,
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.employeesService.updatePhoto(user.id, file);
   }
 
   @Get(':id')
@@ -79,45 +127,5 @@ export class EmployeesController {
   @Roles(AccountRole.ADMIN)
   async deleteEmployee(@Param('id') id: string) {
     return this.employeesService.delete(id);
-  }
-
-  @Get('profile')
-  async getProfile(@CurrentUser() user: Employee) {
-    return this.employeesService.getProfile(user.id);
-  }
-
-  @Patch('contact')
-  async updateProfile(
-    @CurrentUser() user: Employee,
-    @Body() updateData: EmployeeContactDto,
-  ) {
-    await this.employeesService.updateContact(user.id, updateData);
-
-    return;
-  }
-
-  @Patch('change-password')
-  async changePassword(
-    @CurrentUser() user: Employee,
-    @Body() changePasswordDto: ChangePasswordDto,
-  ) {
-    await this.employeesService.changePassword(user.id, changePasswordDto);
-
-    return;
-  }
-
-  @Post('profile/photo')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadPhoto(
-    @CurrentUser() user: Employee,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
-      }),
-      ImageUploadPipe,
-    )
-    file: Express.Multer.File,
-  ) {
-    return this.employeesService.updatePhoto(user.id, file);
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Employee } from '../database/entities/employee.entity';
@@ -223,7 +227,7 @@ export class EmployeesService {
   async changePassword(
     employeeId: string,
     changePasswordDto: ChangePasswordDto,
-  ): Promise<void> {
+  ) {
     const employee = await this.employeeRepository.findOne({
       where: { id: employeeId },
     });
@@ -238,7 +242,18 @@ export class EmployeesService {
     );
 
     if (!isCurrentPasswordValid) {
-      throw new NotFoundException('Current password is incorrect');
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const isPasswordSameAsOld = await bcrypt.compare(
+      changePasswordDto.newPassword,
+      employee.password,
+    );
+
+    if (isPasswordSameAsOld) {
+      throw new BadRequestException(
+        'New password must be different from the old password',
+      );
     }
 
     employee.password = await bcrypt.hash(changePasswordDto.newPassword, 10);
@@ -255,7 +270,10 @@ export class EmployeesService {
       changes: { passwordChanged: true },
     });
 
-    return;
+    return {
+      message:
+        'Password changed successfully, please sign in again with your new password',
+    };
   }
 
   async updatePhoto(

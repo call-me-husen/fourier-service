@@ -30,7 +30,7 @@ async function bootstrap() {
   // Centralised error shape: { code, message }
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 4000);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
