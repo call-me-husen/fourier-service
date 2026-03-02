@@ -14,6 +14,8 @@ async function bootstrap() {
 
   const reflector = app.get(Reflector);
 
+  app.setGlobalPrefix('api');
+
   // Global validation pipe to validate incoming requests
   // whitelist: true - strips properties that do not have any decorators
   // transform: true - transforms payloads to be objects typed according to their DTO classes

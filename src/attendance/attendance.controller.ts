@@ -17,6 +17,7 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { AccountRole } from '../database/entities';
 import { Request } from 'express';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { AttendanceHistoryQueryDto } from './dto/history.dto';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -25,7 +26,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-@Controller('api/attendance')
+@Controller('attendance')
 @UseGuards(JwtGuard)
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
@@ -46,6 +47,22 @@ export class AttendanceController {
     @Query() query: AttendanceQueryDto,
   ) {
     return await this.attendanceService.getMyAttendance(req.user.id, query);
+  }
+
+  @Get('history')
+  async getMyAttendanceHistory(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: AttendanceHistoryQueryDto,
+  ) {
+    return await this.attendanceService.getMyAttendanceHistory(
+      req.user.id,
+      query,
+    );
+  }
+
+  @Get('dashboard')
+  async getDashboard(@Req() req: AuthenticatedRequest) {
+    return await this.attendanceService.getMyAttendanceDashboard(req.user.id);
   }
 
   @Get('report')

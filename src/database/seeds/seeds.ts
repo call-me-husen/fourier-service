@@ -10,6 +10,7 @@ import { EmployeeContact } from '../entities/employee-contact.entity';
 import { Department } from '../entities/department.entity';
 import { JobPosition } from '../entities/job-position.entity';
 import bcrypt from 'bcryptjs';
+import { Attendance, Holiday } from '../entities';
 
 @Injectable()
 export class SeedService implements OnModuleInit {
@@ -22,6 +23,10 @@ export class SeedService implements OnModuleInit {
     private departmentRepository: Repository<Department>,
     @InjectRepository(JobPosition)
     private jobPositionRepository: Repository<JobPosition>,
+    @InjectRepository(Holiday)
+    private holidayRepository: Repository<Holiday>,
+    @InjectRepository(Attendance)
+    private attendanceRepository: Repository<Attendance>,
   ) {}
 
   async onModuleInit() {
@@ -29,6 +34,99 @@ export class SeedService implements OnModuleInit {
   }
 
   async seed() {
+    const holidayCount = await this.holidayRepository.count();
+    if (!holidayCount) {
+      // Insert each saturday and sunday of Feb 2026 as holidays
+      const holidays: Date[] = [];
+      const year = 2026;
+
+      for (let month = 1; month <= 3; month++) {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(year, month, day);
+          const dayOfWeek = date.getDay();
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            holidays.push(date);
+          }
+        }
+      }
+
+      for (const date of holidays) {
+        await this.holidayRepository.save({
+          name: `Weekend`,
+          date,
+          description: 'This day is a weekend holiday.',
+        });
+      }
+    }
+
+    const attendanceCount = await this.attendanceRepository.count();
+    if (!attendanceCount) {
+      const employeeAdm = await this.employeeRepository.findOneBy({
+        email: 'admin@fourier.com',
+      });
+
+      const dates = [
+        new Date('2026-02-09'),
+        new Date('2026-02-10'),
+        new Date('2026-02-11'),
+        new Date('2026-02-12'),
+        new Date('2026-02-13'),
+        new Date('2026-02-16'),
+      ];
+
+      for (const date of dates) {
+        const hasClockOut = Math.random() > 0.2; // 80% chance of clocking out
+        const hourIn = 0;
+        // Randomize clock in minutes between 0-15
+        const minuteIn = Math.floor(Math.random() * 16);
+        const secondIn = Math.floor(Math.random() * 60);
+        const clockInTime = new Date(date.setHours(hourIn, minuteIn, secondIn));
+
+        const hourOut = hourIn + 9;
+        const minuteOut = Math.floor(Math.random() * 16);
+        const secondOut = Math.floor(Math.random() * 60);
+        const clockOutTime = new Date(
+          date.setHours(hourOut, minuteOut, secondOut),
+        );
+
+        await this.attendanceRepository.save({
+          employee: employeeAdm!,
+          date,
+          clockIn: clockInTime,
+          clockOut: hasClockOut ? clockOutTime : null,
+        });
+      }
+
+      const employeeJane = await this.employeeRepository.findOneBy({
+        email: 'jane@fourier.com',
+      });
+
+      for (const date of dates) {
+        const hasClockOut = Math.random() > 0.2; // 80% chance of clocking out
+        const hourIn = 0;
+        // Randomize clock in minutes between 0-15
+        const minuteIn = Math.floor(Math.random() * 16);
+        const secondIn = Math.floor(Math.random() * 60);
+        const clockInTime = new Date(date.setHours(hourIn, minuteIn, secondIn));
+
+        const hourOut = hourIn + 9;
+        const minuteOut = Math.floor(Math.random() * 16);
+        const secondOut = Math.floor(Math.random() * 60);
+        const clockOutTime = new Date(
+          date.setHours(hourOut, minuteOut, secondOut),
+        );
+
+        // const clockInToday = new Date(date.getTime())
+        await this.attendanceRepository.save({
+          employee: employeeJane!,
+          date,
+          clockIn: clockInTime,
+          clockOut: hasClockOut ? clockOutTime : null,
+        });
+      }
+    }
+
     const employeeCount = await this.employeeRepository.count();
     if (employeeCount > 0) {
       return;

@@ -29,10 +29,10 @@ export class Attendance {
   @Column({ type: 'date' })
   date!: Date;
 
-  @Column({ name: 'clock_in', type: 'timestamp', nullable: true })
+  @Column({ name: 'clock_in', type: 'timestamptz', nullable: true })
   clockIn!: Date | null;
 
-  @Column({ name: 'clock_out', type: 'timestamp', nullable: true })
+  @Column({ name: 'clock_out', type: 'timestamptz', nullable: true })
   clockOut!: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })

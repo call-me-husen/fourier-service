@@ -17,7 +17,7 @@ import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { AccountRole } from '../database/entities';
 
-@Controller('job-positions')
+@Controller('api/job-positions')
 export class JobPositionsController {
   constructor(private readonly jobPositionsService: JobPositionsService) {}
 

@@ -1,7 +1,8 @@
-import { IsOptional, IsDateString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsDate } from 'class-validator';
 
 export class ClockOutDto {
-  @IsOptional()
-  @IsDateString()
-  timestamp?: string;
+  @IsDate()
+  @Type(() => Date)
+  date!: Date;
 }

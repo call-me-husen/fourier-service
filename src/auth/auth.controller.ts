@@ -10,7 +10,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignInDto } from './dto/signin.dto';
 
-@Controller('api/auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -32,7 +32,7 @@ export class AuthController {
 
   @Post('signout')
   @HttpCode(HttpStatus.OK)
-  signOut(@Res({ passthrough: true }) res: Response) {
+  signout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token', { path: '/' });
     return { message: 'Signed out successfully' };
   }

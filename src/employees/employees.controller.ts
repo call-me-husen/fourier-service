@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Patch,
   Post,
   Body,
   UseGuards,
@@ -20,15 +19,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccountRole, Employee } from '../database/entities/employee.entity';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { ImageUploadPipe } from '../image-upload/image-upload.pipe';
-import { EmployeeContactDto } from './dto/employee-contact.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateEmployeeDto } from './dto/create.dto';
-import { UpdateEmployeeDto } from './dto/update.dto';
 import type { Response } from 'express';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
-@Controller('api/employees')
+@Controller('employees')
 @UseGuards(JwtGuard)
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
@@ -57,17 +55,16 @@ export class EmployeesController {
     return this.employeesService.getProfile(user.id);
   }
 
-  @Patch('contact')
+  @Post('profile/update')
+  @UseGuards(JwtGuard)
   async updateProfile(
     @CurrentUser() user: Employee,
-    @Body() updateData: EmployeeContactDto,
+    @Body() updateData: Partial<UpdateProfileDto>,
   ) {
-    await this.employeesService.updateContact(user.id, updateData);
-
-    return;
+    return this.employeesService.updateProfile(user.id, updateData);
   }
 
-  @Patch('change-password')
+  @Post('change-password')
   async changePassword(
     @CurrentUser() user: Employee,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -98,28 +95,11 @@ export class EmployeesController {
     return this.employeesService.updatePhoto(user.id, file);
   }
 
-  @Get(':id')
-  @UseGuards(JwtGuard, RoleGuard)
-  @Roles(AccountRole.ADMIN)
-  async getEmployee(@Param('id') id: string) {
-    return this.employeesService.getProfile(id);
-  }
-
   @Post()
   @UseGuards(JwtGuard, RoleGuard)
   @Roles(AccountRole.ADMIN)
   async createEmployee(@Body() createEmployeeDto: CreateEmployeeDto) {
     return this.employeesService.create(createEmployeeDto);
-  }
-
-  @Patch(':id')
-  @UseGuards(JwtGuard, RoleGuard)
-  @Roles(AccountRole.ADMIN)
-  async updateEmployee(
-    @Param('id') id: string,
-    @Body() updateEmployeeDto: Partial<UpdateEmployeeDto>,
-  ) {
-    return this.employeesService.update(id, updateEmployeeDto);
   }
 
   @Delete(':id')

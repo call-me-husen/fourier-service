@@ -14,6 +14,7 @@ import { EmployeeContactsService } from '../employee-contacts/employee-contacts.
 import { CreateEmployeeDto } from './dto/create.dto';
 import { UpdateEmployeeDto } from './dto/update.dto';
 import { RabbitMqService } from '../rabbitmq/rabbitmq.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class EmployeesService {
@@ -307,6 +308,44 @@ export class EmployeesService {
     });
 
     return { photoUrl: employee.photoUrl };
+  }
+
+  async updateProfile(
+    employeeId: string,
+    updateData: Partial<UpdateProfileDto>,
+  ) {
+    const employee = await this.employeeRepository.findOne({
+      where: { id: employeeId },
+      relations: ['contact', 'department', 'position'],
+    });
+
+    if (!employee) {
+      throw new BadRequestException('Employee not found');
+    }
+
+    await this.contactService.createOrUpdateContact(employeeId, {
+      phone: updateData.phone || employee.contact?.phone || '',
+      address: updateData.address || employee.contact?.address || '',
+      emergencyContact:
+        updateData.emergencyContact || employee.contact?.emergencyContact || '',
+      emergencyPhone:
+        updateData.emergencyPhone || employee.contact?.emergencyPhone || '',
+    });
+
+    const savedEmployee = await this.employeeRepository.save(employee);
+
+    void this.rabbitMqService.publishEmployeeChange({
+      eventId: this.rabbitMqService.generateEventId(),
+      timestamp: new Date(),
+      actorEmployeeId: employeeId,
+      entity: 'employee',
+      action: 'update',
+      targetId: employeeId,
+      summary: `Profile updated for ${savedEmployee.firstName} ${savedEmployee.lastName || ''}`,
+      changes: { profileUpdated: true },
+    });
+
+    return savedEmployee;
   }
 
   private getChangedFields(
