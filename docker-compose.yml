@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fourier-postgres
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  postgres-log:
+    image: postgres:15-alpine
+    container_name: fourier-postgres-log
+    environment:
+      POSTGRES_USER: ${LOG_DB_USERNAME}
+      POSTGRES_PASSWORD: ${LOG_DB_PASSWORD}
+      POSTGRES_DB: ${LOG_DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_log_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: fourier-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  postgres_data:
+  postgres_log_data:
+  rabbitmq_data:
