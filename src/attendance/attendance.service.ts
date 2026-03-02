@@ -156,9 +156,8 @@ export class AttendanceService {
     query: AttendanceHistoryQueryDto,
   ) {
     const { month, year } = query;
-    const from = new Date(year, month - 1, 1);
-    const to = new Date(year, month, 0); // Last day of the month
-
+    const from = new Date(`${year}-${month}-1`);
+    const to = new Date(`${year}-${month + 1}-1`);
     // Holiday
     const holidayRecords = await this.holidayRepository.find({
       where: {
@@ -182,60 +181,63 @@ export class AttendanceService {
       incomplete: 0,
     };
 
-    const records = Array.from({ length: to.getDate() }, (_, i) => {
-      const date = new Date(year, month - 1, i + 1);
-      const formattedDate = date.toLocaleDateString('en-ID', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      });
+    const records = Array.from(
+      { length: new Date(year, month, 0).getDate() },
+      (_, i) => {
+        const date = new Date(year, month - 1, i + 1);
+        const formattedDate = date.toLocaleDateString('en-ID', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
 
-      const isHoliday = holidayRecords.some(
-        (r) =>
-          new Date(r.date).toISOString().split('T')[0] ===
-          date.toISOString().split('T')[0],
-      );
+        const isHoliday = holidayRecords.some(
+          (r) =>
+            new Date(r.date).toISOString().split('T')[0] ===
+            date.toISOString().split('T')[0],
+        );
 
-      if (isHoliday) {
-        stats.holiday++;
+        if (isHoliday) {
+          stats.holiday++;
+          return {
+            date: formattedDate,
+            state: 'holiday',
+            clockIn: null,
+            clockOut: null,
+          };
+        }
+
+        const isFuture = date.getTime() > Date.now();
+        if (isFuture) {
+          return {
+            date: formattedDate,
+            state: 'future',
+            clockIn: null,
+            clockOut: null,
+          };
+        }
+
+        const attendance = attendanceRecords.find(
+          (a) =>
+            new Date(a.date).toISOString().split('T')[0] ===
+            date.toISOString().split('T')[0],
+        );
+
+        const state = attendance
+          ? attendance.clockIn && attendance.clockOut
+            ? 'present'
+            : 'incomplete'
+          : 'absent';
+
+        stats[state]++;
         return {
           date: formattedDate,
-          state: 'holiday',
-          clockIn: null,
-          clockOut: null,
+          state,
+          clockIn: attendance ? Number(attendance.clockIn) : null,
+          clockOut: attendance ? Number(attendance.clockOut) : null,
         };
-      }
-
-      const isFuture = date.getTime() > Date.now();
-      if (isFuture) {
-        return {
-          date: formattedDate,
-          state: 'future',
-          clockIn: null,
-          clockOut: null,
-        };
-      }
-
-      const attendance = attendanceRecords.find(
-        (a) =>
-          new Date(a.date).toISOString().split('T')[0] ===
-          date.toISOString().split('T')[0],
-      );
-
-      const state = attendance
-        ? attendance.clockIn && attendance.clockOut
-          ? 'present'
-          : 'incomplete'
-        : 'absent';
-
-      stats[state]++;
-      return {
-        date: formattedDate,
-        state,
-        clockIn: attendance ? Number(attendance.clockIn) : null,
-        clockOut: attendance ? Number(attendance.clockOut) : null,
-      };
-    });
+      },
+    );
 
     return {
       records: records.reduce(
@@ -283,8 +285,6 @@ export class AttendanceService {
         date: today,
       },
     });
-
-    console.log('isTodayHoliday', isTodayHoliday?.date, today);
 
     const stats = {
       holiday: 0,
