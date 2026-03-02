@@ -15,8 +15,6 @@ export class AttendanceService {
   constructor(
     @InjectRepository(Attendance)
     private attendanceRepository: Repository<Attendance>,
-    @InjectRepository(Employee)
-    private employeeRepository: Repository<Employee>,
     @InjectRepository(Holiday)
     private holidayRepository: Repository<Holiday>,
   ) {}
@@ -108,6 +106,7 @@ export class AttendanceService {
     }
 
     attendance.clockOut = date;
+    attendance.totalWorkTime = date.getTime() - attendance.clockIn.getTime();
     await this.attendanceRepository.save(attendance);
 
     return {
@@ -115,6 +114,7 @@ export class AttendanceService {
       date: attendance.date,
       clockIn: attendance.clockIn,
       clockOut: attendance.clockOut,
+      totalWorkTime: attendance.totalWorkTime,
       status: 'clocked_out',
     };
   }
@@ -324,10 +324,7 @@ export class AttendanceService {
       if (attendance) {
         stats.working++;
         if (attendance.clockIn && attendance.clockOut) {
-          const clockInTime = new Date(attendance.clockIn).getTime();
-          const clockOutTime = new Date(attendance.clockOut).getTime();
-          stats.totalWorkingHours +=
-            (clockOutTime - clockInTime) / (1000 * 60 * 60);
+          stats.totalWorkingHours += attendance.totalWorkTime;
         }
       } else {
         stats.absent++;
@@ -344,13 +341,10 @@ export class AttendanceService {
     }
 
     // HH:MM:DD format
-    const totalHours = Math.floor(stats.totalWorkingHours);
-    const totalMinutes = Math.floor(
-      (stats.totalWorkingHours - totalHours) * 60,
-    );
-    const totalSeconds = Math.floor(
-      ((stats.totalWorkingHours - totalHours) * 60 - totalMinutes) * 60,
-    );
+    stats.totalWorkingHours = stats.totalWorkingHours / 1000; // convert ms to seconds
+    const totalHours = Math.floor(stats.totalWorkingHours / 3600);
+    const totalMinutes = Math.floor((stats.totalWorkingHours % 3600) / 60);
+    const totalSeconds = Math.floor(stats.totalWorkingHours % 60);
     const formattedTotalWorkingHours = `${totalHours.toString().padStart(2, '0')}:${totalMinutes.toString().padStart(2, '0')}:${totalSeconds
       .toString()
       .padStart(2, '0')}`;
@@ -368,31 +362,24 @@ export class AttendanceService {
     };
   }
 
-  async getAdminAttendanceReport(query: AdminAttendanceQueryDto) {
-    const today = this.getJakartaDateOnly();
-    const from = query.from
-      ? this.getJakartaDateOnly(query.from)
-      : this.getFirstDayOfCurrentMonth();
-    const to = query.to ? this.getJakartaDateOnly(query.to) : today;
-
+  async getAdminAttendanceReport({
+    from,
+    to,
+    keyword,
+  }: AdminAttendanceQueryDto) {
     if (from > to) {
       throw new BadRequestException('Invalid date range: from > to');
     }
 
-    const { page = 1, limit = 10, search, employeeId } = query;
-    const offset = (page - 1) * limit;
+    // Search by employee name or email
+    const search = keyword ? `%${keyword}%` : null;
 
+    // Get total and avg of working hours grouped by employee
     const queryBuilder = this.attendanceRepository
       .createQueryBuilder('attendance')
-      .leftJoinAndSelect('attendance.employee', 'employee')
       .where('attendance.date >= :from', { from })
-      .andWhere('attendance.date <= :to', { to });
-
-    if (employeeId) {
-      queryBuilder.andWhere('attendance.employeeId = :employeeId', {
-        employeeId,
-      });
-    }
+      .andWhere('attendance.date <= :to', { to })
+      .leftJoinAndSelect('attendance.employee', 'employee');
 
     if (search) {
       queryBuilder.andWhere(
@@ -401,33 +388,77 @@ export class AttendanceService {
       );
     }
 
-    const [data, total] = await queryBuilder
+    const holidayRecords = await this.holidayRepository.find({
+      where: {
+        date: Between(from, to),
+      },
+      select: ['date'],
+    });
+
+    const totalDateInRange =
+      Math.ceil((to.getTime() - from.getTime()) / (1000 * 3600 * 24)) + 1;
+    const holidayDateInRange = holidayRecords.map((r) => r.date);
+
+    const [data] = await queryBuilder
       .orderBy('attendance.date', 'DESC')
-      .skip(offset)
-      .take(limit)
       .getManyAndCount();
 
-    const adminData = data.map((attendance) => ({
-      id: attendance.id,
-      date: attendance.date,
-      clockIn: attendance.clockIn,
-      clockOut: attendance.clockOut,
-      employeeId: attendance.employeeId,
-      employee: attendance.employee
-        ? {
-            employeeNumber: attendance.employee.employeeNumber,
-            firstName: attendance.employee.firstName,
-            lastName: attendance.employee.lastName,
-            email: attendance.employee.email,
-          }
-        : null,
-    }));
+    // Process data to group by employee
+    const groupedData = data.reduce(
+      (acc, record) => {
+        const empId = record.employee.id;
+        if (!acc[empId]) {
+          acc[empId] = {
+            employeeId: empId,
+            firstName: record.employee.firstName,
+            lastName: record.employee.lastName || '',
+            email: record.employee.email,
+            totalWorkingHours: 0,
+            present: 0,
+            incomplete: 0,
+          };
+        }
+
+        const workingHours =
+          record.clockIn && record.clockOut
+            ? record.clockOut.getTime() - record.clockIn.getTime()
+            : 0;
+        acc[empId].totalWorkingHours += workingHours;
+        if (record.clockIn && record.clockOut) {
+          acc[empId].present++;
+        } else if (record.clockIn && !record.clockOut) {
+          acc[empId].incomplete++;
+        }
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          employeeId: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          totalWorkingHours: number;
+          present: number;
+          incomplete: number;
+        }
+      >,
+    );
 
     return {
-      data: adminData,
-      total,
-      page,
-      lastPage: Math.ceil(total / limit),
+      records: Object.values(groupedData).map((rec) => {
+        const totalDays = rec.present + rec.incomplete;
+        return {
+          ...rec,
+          avgWorkingHours:
+            totalDays > 0 ? rec.totalWorkingHours / totalDays : 0,
+          absent:
+            totalDateInRange -
+            holidayDateInRange.length -
+            rec.present -
+            rec.incomplete,
+        };
+      }),
     };
   }
 }

@@ -1,21 +1,18 @@
-import { IsOptional, IsDateString, IsInt, IsUUID, Min } from 'class-validator';
+import { IsOptional, IsInt, Min, IsDate, IsString, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AdminAttendanceQueryDto {
-  @IsOptional()
-  @IsDateString()
-  from?: string;
+  @IsDate()
+  @Type(() => Date)
+  from!: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  to!: Date;
 
   @IsOptional()
-  @IsDateString()
-  to?: string;
-
-  @IsOptional()
-  @IsUUID()
-  employeeId?: string;
-
-  @IsOptional()
-  search?: string;
+  @IsString()
+  keyword?: string;
 
   @IsOptional()
   @Type(() => Number)
@@ -27,5 +24,6 @@ export class AdminAttendanceQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(20)
   limit?: number = 10;
 }

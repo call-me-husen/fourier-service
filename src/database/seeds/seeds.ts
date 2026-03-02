@@ -90,11 +90,16 @@ export class SeedService implements OnModuleInit {
           date.setHours(hourOut, minuteOut, secondOut),
         );
 
+        const totalWorkTime = hasClockOut
+          ? clockOutTime.getTime() - clockInTime.getTime()
+          : 0; // in milliseconds
+
         await this.attendanceRepository.save({
           employee: employeeAdm!,
           date,
           clockIn: clockInTime,
           clockOut: hasClockOut ? clockOutTime : null,
+          totalWorkTime,
         });
       }
 
@@ -117,12 +122,17 @@ export class SeedService implements OnModuleInit {
           date.setHours(hourOut, minuteOut, secondOut),
         );
 
+        const totalWorkTime = hasClockOut
+          ? clockOutTime.getTime() - clockInTime.getTime()
+          : 0; // in milliseconds
+
         // const clockInToday = new Date(date.getTime())
         await this.attendanceRepository.save({
           employee: employeeJane!,
           date,
           clockIn: clockInTime,
           clockOut: hasClockOut ? clockOutTime : null,
+          totalWorkTime,
         });
       }
     }

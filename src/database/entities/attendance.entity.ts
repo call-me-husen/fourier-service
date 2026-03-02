@@ -35,6 +35,9 @@ export class Attendance {
   @Column({ name: 'clock_out', type: 'timestamptz', nullable: true })
   clockOut!: Date | null;
 
+  @Column({ type: 'int', name: 'total_work_time', default: 0 })
+  totalWorkTime!: number; // in seconds
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
