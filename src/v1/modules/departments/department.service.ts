@@ -6,11 +6,16 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BaseService } from '../../../shared/services/base.service';
+import { Employee } from '../../../shared/entities/employee.entity';
 import { Department } from '../../../shared/entities/department.entity';
 import {
   CacheService,
   CACHE_KEYS,
 } from '../../../common/services/cache.service';
+import {
+  AuditActor,
+  AuditPublisherService,
+} from '../../../common/services/audit-publisher.service';
 
 type DepartmentResponse = Omit<Department, 'parentId'> & {
   parent: string | null;
@@ -24,10 +29,16 @@ type DepartmentMutationInput = Partial<Department> & {
 export class DepartmentService extends BaseService<Department> {
   private readonly CACHE_TTL = 60;
 
+  private toAuditActor(actor?: Employee): AuditActor | undefined {
+    if (!actor) return undefined;
+    return { id: actor.id, email: actor.email, role: actor.role?.name ?? null };
+  }
+
   constructor(
     @InjectRepository(Department)
     private departmentRepository: Repository<Department>,
     private cacheService: CacheService,
+    private auditPublisherService: AuditPublisherService,
   ) {
     super(departmentRepository);
   }
@@ -145,27 +156,53 @@ export class DepartmentService extends BaseService<Department> {
 
   async createWithCache(
     data: DepartmentMutationInput,
+    actor?: Employee,
   ): Promise<DepartmentResponse | null> {
     const nextData = await this.buildMutationData(data);
     const result = await this.create(nextData);
     await this.cacheService.delByPrefix(CACHE_KEYS.DEPARTMENTS);
-    return this.findOneWithParentName(result.id);
+    const department = await this.findOneWithParentName(result.id);
+    await this.auditPublisherService.publishEntityChange(
+      'department',
+      'created',
+      department,
+      result.id,
+      this.toAuditActor(actor),
+    );
+    return department;
   }
 
   async updateWithCache(
     id: string,
     data: DepartmentMutationInput,
+    actor?: Employee,
   ): Promise<DepartmentResponse | null> {
     const nextData = await this.buildMutationData(data, id);
     await this.update(id, nextData);
     await this.cacheService.delByPrefix(CACHE_KEYS.DEPARTMENTS);
     await this.cacheService.del(`${CACHE_KEYS.DEPARTMENT}:${id}`);
-    return this.findOneWithParentName(id);
+    const department = await this.findOneWithParentName(id);
+    await this.auditPublisherService.publishEntityChange(
+      'department',
+      'updated',
+      department,
+      id,
+      this.toAuditActor(actor),
+    );
+    return department;
   }
 
-  async deleteWithCache(id: string): Promise<void> {
+  async deleteWithCache(id: string, actor?: Employee): Promise<void> {
+    const existing = await this.findOneWithParentName(id);
     await this.delete(id);
     await this.cacheService.delByPrefix(CACHE_KEYS.DEPARTMENTS);
     await this.cacheService.del(`${CACHE_KEYS.DEPARTMENT}:${id}`);
+    await this.auditPublisherService.publishEntityChange(
+      'department',
+      'deleted',
+      existing,
+      id,
+      this.toAuditActor(actor),
+    );
   }
 }

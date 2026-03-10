@@ -18,8 +18,10 @@ import { HolidayService } from './holidays.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateHolidayDto } from './dto/create-holiday.dto';
 import { HolidayResponseDto } from './dto/holiday-response.dto';
+import { Employee } from '../../../shared/entities/employee.entity';
 
 @ApiTags('Holidays')
 @ApiBearerAuth()
@@ -39,8 +41,8 @@ export class HolidaysController {
     description: 'Holiday created',
     type: HolidayResponseDto,
   })
-  async create(@Body() dto: CreateHolidayDto) {
-    const holiday = await this.holidayService.createWithCache(dto);
+  async create(@Body() dto: CreateHolidayDto, @CurrentUser() user: Employee) {
+    const holiday = await this.holidayService.createWithCache(dto, user);
     return HolidayResponseDto.fromEntity(holiday);
   }
 
@@ -54,7 +56,10 @@ export class HolidaysController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete holiday' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.holidayService.deleteWithCache(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: Employee,
+  ) {
+    return this.holidayService.deleteWithCache(id, user);
   }
 }

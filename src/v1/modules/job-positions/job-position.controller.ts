@@ -19,9 +19,11 @@ import { JobPositionService } from './job-position.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateJobPositionDto } from './dto/create-job-position.dto';
 import { UpdateJobPositionDto } from './dto/update-job-position.dto';
 import { JobPositionResponseDto } from './dto/job-position-response.dto';
+import { Employee } from '../../../shared/entities/employee.entity';
 
 @ApiTags('Job Positions')
 @ApiBearerAuth()
@@ -41,8 +43,14 @@ export class JobPositionController {
     description: 'Job position created',
     type: JobPositionResponseDto,
   })
-  async create(@Body() dto: CreateJobPositionDto) {
-    const jobPosition = await this.jobPositionService.createWithCache(dto);
+  async create(
+    @Body() dto: CreateJobPositionDto,
+    @CurrentUser() user: Employee,
+  ) {
+    const jobPosition = await this.jobPositionService.createWithCache(
+      dto,
+      user,
+    );
     return JobPositionResponseDto.fromEntity(jobPosition);
   }
 
@@ -68,14 +76,22 @@ export class JobPositionController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateJobPositionDto,
+    @CurrentUser() user: Employee,
   ) {
-    const jobPosition = await this.jobPositionService.updateWithCache(id, dto);
+    const jobPosition = await this.jobPositionService.updateWithCache(
+      id,
+      dto,
+      user,
+    );
     return JobPositionResponseDto.fromEntity(jobPosition);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete job position' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.jobPositionService.deleteWithCache(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: Employee,
+  ) {
+    return this.jobPositionService.deleteWithCache(id, user);
   }
 }

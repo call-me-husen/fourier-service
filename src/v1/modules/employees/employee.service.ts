@@ -8,6 +8,10 @@ import { EmployeeQueryDto } from './dto/query.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { NotificationGateway } from '../../../common/gateways/notification.gateway';
 import {
+  AuditActor,
+  AuditPublisherService,
+} from '../../../common/services/audit-publisher.service';
+import {
   CacheService,
   CACHE_KEYS,
 } from '../../../common/services/cache.service';
@@ -16,6 +20,11 @@ import {
 export class EmployeeService extends BaseService<Employee> {
   private readonly CACHE_TTL = 60;
 
+  private toAuditActor(actor?: Employee): AuditActor | undefined {
+    if (!actor) return undefined;
+    return { id: actor.id, email: actor.email, role: actor.role?.name ?? null };
+  }
+
   constructor(
     @InjectRepository(Employee)
     private employeeRepository: Repository<Employee>,
@@ -23,8 +32,59 @@ export class EmployeeService extends BaseService<Employee> {
     private contactRepository: Repository<Contact>,
     private notificationGateway: NotificationGateway,
     private cacheService: CacheService,
+    private auditPublisherService: AuditPublisherService,
   ) {
     super(employeeRepository);
+  }
+
+  async createWithAudit(
+    data: Partial<Employee>,
+    actor?: Employee,
+  ): Promise<Employee> {
+    const employee = await this.create(data);
+    await this.auditPublisherService.publishEntityChange(
+      'employee',
+      'created',
+      employee,
+      employee.id,
+      this.toAuditActor(actor),
+    );
+    return employee;
+  }
+
+  async updateAdminWithAudit(
+    id: string,
+    data: Partial<Employee>,
+    actor?: Employee,
+  ): Promise<Employee> {
+    const employee = await this.update(id, data);
+    await this.cacheService.del(`${CACHE_KEYS.EMPLOYEE}:${id}`);
+    await this.cacheService.delByPrefix(CACHE_KEYS.EMPLOYEES);
+    await this.auditPublisherService.publishEntityChange(
+      'employee',
+      'updated',
+      employee,
+      employee.id,
+      this.toAuditActor(actor),
+    );
+    return employee;
+  }
+
+  async deleteWithAudit(id: string, actor?: Employee): Promise<void> {
+    const existing = await this.findOne({
+      where: { id },
+      relations: ['role', 'department', 'jobPosition', 'contact'],
+    });
+    await this.delete(id);
+    await this.cacheService.del(`${CACHE_KEYS.EMPLOYEE}:${id}`);
+    await this.cacheService.delByPrefix(CACHE_KEYS.EMPLOYEES);
+    await this.auditPublisherService.publishEntityChange(
+      'employee',
+      'deleted',
+      existing,
+      id,
+      this.toAuditActor(actor),
+    );
   }
 
   async findByEmail(email: string): Promise<Employee | null> {
@@ -84,6 +144,7 @@ export class EmployeeService extends BaseService<Employee> {
   async updateWithNotification(
     id: string,
     data: Partial<Employee>,
+    actor?: Employee,
   ): Promise<Employee> {
     const employee = await this.findById(id);
     if (!employee) {
@@ -125,12 +186,21 @@ export class EmployeeService extends BaseService<Employee> {
       throw new Error('Employee not found after update');
     }
 
+    await this.auditPublisherService.publishEntityChange(
+      'employee',
+      'updated',
+      updated,
+      updated.id,
+      this.toAuditActor(actor),
+    );
+
     return updated;
   }
 
   async updateProfileWithNotification(
     id: string,
     data: UpdateProfileDto,
+    actor?: Employee,
   ): Promise<Employee> {
     const employee = await this.findOne({
       where: { id },
@@ -223,6 +293,14 @@ export class EmployeeService extends BaseService<Employee> {
     if (!updated) {
       throw new NotFoundException('Employee not found after update');
     }
+
+    await this.auditPublisherService.publishEntityChange(
+      'employee',
+      'updated',
+      updated,
+      updated.id,
+      this.toAuditActor(actor),
+    );
 
     return updated;
   }

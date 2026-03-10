@@ -19,9 +19,11 @@ import { DepartmentService } from './department.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { DepartmentResponseDto } from './dto/department-response.dto';
+import { Employee } from '../../../shared/entities/employee.entity';
 
 @ApiTags('Departments')
 @ApiBearerAuth()
@@ -41,8 +43,8 @@ export class DepartmentController {
     description: 'Department created',
     type: DepartmentResponseDto,
   })
-  create(@Body() dto: CreateDepartmentDto) {
-    return this.departmentService.createWithCache(dto);
+  create(@Body() dto: CreateDepartmentDto, @CurrentUser() user: Employee) {
+    return this.departmentService.createWithCache(dto, user);
   }
 
   @Get()
@@ -78,14 +80,18 @@ export class DepartmentController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDepartmentDto,
+    @CurrentUser() user: Employee,
   ) {
-    return this.departmentService.updateWithCache(id, dto);
+    return this.departmentService.updateWithCache(id, dto, user);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete department' })
   @ApiResponse({ status: 200, description: 'Department deleted successfully' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.departmentService.deleteWithCache(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: Employee,
+  ) {
+    return this.departmentService.deleteWithCache(id, user);
   }
 }

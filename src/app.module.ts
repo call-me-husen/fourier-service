@@ -19,6 +19,7 @@ import { AttendanceModule } from './v1/modules/attendance/attendance.module';
 import { ReportsModule } from './v1/modules/reports/reports.module';
 import { NotificationModule } from './common/modules/notification.module';
 import { CacheConfigModule } from './common/modules/cache-config.module';
+import { AuditModule } from './common/modules/audit.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { CacheConfigModule } from './common/modules/cache-config.module';
     ReportsModule,
     NotificationModule,
     CacheConfigModule,
+    AuditModule,
   ],
 })
 export class AppModule {}

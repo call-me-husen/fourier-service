@@ -69,8 +69,11 @@ export class EmployeesController {
     type: EmployeeResponseDto,
   })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async create(@Body() dto: CreateEmployeeDto) {
-    const employee = await this.employeeService.create(dto);
+  async create(@Body() dto: CreateEmployeeDto, @CurrentUser() user: Employee) {
+    const employee = await this.employeeService.createWithAudit(
+      dto as Partial<Employee>,
+      user,
+    );
     return EmployeeResponseDto.fromEntity(employee);
   }
 
@@ -106,8 +109,13 @@ export class EmployeesController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEmployeeDto,
+    @CurrentUser() user: Employee,
   ) {
-    const employee = await this.employeeService.update(id, dto);
+    const employee = await this.employeeService.updateAdminWithAudit(
+      id,
+      dto as Partial<Employee>,
+      user,
+    );
     return EmployeeResponseDto.fromEntity(employee);
   }
 
@@ -116,8 +124,11 @@ export class EmployeesController {
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Delete employee (Admin only)' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.employeeService.delete(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: Employee,
+  ) {
+    return this.employeeService.deleteWithAudit(id, user);
   }
 
   @Get('me/profile')
@@ -141,6 +152,7 @@ export class EmployeesController {
     const employee = await this.employeeService.updateProfileWithNotification(
       user.id,
       dto,
+      user,
     );
     return EmployeeResponseDto.fromEntity(employee);
   }
@@ -164,9 +176,13 @@ export class EmployeesController {
       throw new UnauthorizedException('Invalid old password');
     }
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-    await this.employeeService.updateWithNotification(user.id, {
-      password: hashedPassword,
-    });
+    await this.employeeService.updateWithNotification(
+      user.id,
+      {
+        password: hashedPassword,
+      },
+      user,
+    );
     return { message: 'Password changed successfully' };
   }
 
@@ -209,6 +225,7 @@ export class EmployeesController {
       {
         photo: photoUrl,
       },
+      user,
     );
     return EmployeeResponseDto.fromEntity(employee);
   }
