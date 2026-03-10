@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  ParseFilePipeBuilder,
   UseGuards,
   NotFoundException,
   UnauthorizedException,
@@ -188,7 +189,15 @@ export class EmployeesController {
   @UseInterceptors(FileInterceptor('file'))
   async updateProfilePicture(
     @CurrentUser() user: Employee,
-    @UploadedFile() file: UploadedImageFile,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+        .build({
+          fileIsRequired: true,
+          errorHttpStatusCode: 400,
+        }),
+    )
+    file: UploadedImageFile,
   ) {
     const photoUrl = await this.imageKitService.uploadProfileImage(
       file,
