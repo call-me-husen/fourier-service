@@ -191,6 +191,7 @@ export class EmployeesController {
     @CurrentUser() user: Employee,
     @UploadedFile(
       new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /^image\/(jpeg|jpg|png|webp)$/ })
         .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
         .build({
           fileIsRequired: true,
