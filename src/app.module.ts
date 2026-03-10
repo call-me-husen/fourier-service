@@ -1,85 +1,74 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ConfigModule } from './config/config.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigService } from './config/config.service';
-import {
-  Attendance,
-  ChangeLog,
-  Holiday,
-  Department,
-  JobPosition,
-} from './database/entities';
-import { Employee } from './database/entities/employee.entity';
-import { EmployeeContact } from './database/entities/employee-contact.entity';
-import { SeedService } from './database/seeds/seeds';
-import { AuthModule } from './auth/auth.module';
-import { EmployeesModule } from './employees/employees.module';
-import { HolidaysModule } from './holidays/holidays.module';
-import { DepartmentsModule } from './departments/departments.module';
-import { JobPositionsModule } from './job-positions/job-positions.module';
-import { RabbitMqModule } from './rabbitmq/rabbitmq.module';
-import { AttendanceModule } from './attendance/attendance.module';
-import { MonitoringModule } from './monitoring/monitoring.module';
+
+import { Attendance } from './shared/entities/attendance.entity';
+import { Holiday } from './shared/entities/holiday.entity';
+import { Department } from './shared/entities/department.entity';
+import { Employee } from './shared/entities/employee.entity';
+import { Contact } from './shared/entities/contact.entity';
+import { JobPosition } from './shared/entities/job-position.entity';
+import { Role } from './shared/entities/role.entity';
+
+import { AuthModule } from './v1/modules/auth/auth.module';
+import { EmployeesModule } from './v1/modules/employees/employees.module';
+import { HolidaysModule } from './v1/modules/holidays/holidays.module';
+import { DepartmentsModule } from './v1/modules/departments/departments.module';
+import { JobPositionsModule } from './v1/modules/job-positions/job-positions.module';
+import { AttendanceModule } from './v1/modules/attendance/attendance.module';
+import { ReportsModule } from './v1/modules/reports/reports.module';
+import { NotificationModule } from './common/modules/notification.module';
+import { CacheConfigModule } from './common/modules/cache-config.module';
 
 @Module({
   imports: [
-    ConfigModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.dbHost,
-        port: configService.dbSsl ? undefined : configService.dbPort,
-        username: configService.dbUsername,
-        password: configService.dbPassword,
-        database: configService.dbName,
-        ssl: configService.dbSsl ? { rejectUnauthorized: false } : false,
+        host: configService.get<string>('DB_HOST', 'localhost'),
+        port: configService.get<number>('DB_PORT', 5432),
+        username: configService.get<string>('DB_USERNAME', 'postgres'),
+        password: configService.get<string>('DB_PASSWORD', 'postgres'),
+        database: configService.get<string>('DB_NAME', 'fourier'),
+        ssl:
+          configService.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
         entities: [
           Attendance,
           Holiday,
           Department,
           Employee,
-          EmployeeContact,
+          Contact,
           JobPosition,
+          Role,
         ],
-        synchronize: true,
-      }),
-    }),
-    TypeOrmModule.forRootAsync({
-      name: 'logDb',
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.logDbHost,
-        port: configService.logDbSsl ? undefined : configService.logDbPort,
-        username: configService.logDbUsername,
-        password: configService.logDbPassword,
-        database: configService.logDbName,
-        ssl: configService.logDbSsl ? { rejectUnauthorized: false } : false,
-        entities: [ChangeLog],
         synchronize: true,
       }),
     }),
     TypeOrmModule.forFeature([
       Employee,
-      EmployeeContact,
+      Contact,
       Department,
       JobPosition,
       Holiday,
       Attendance,
+      Role,
     ]),
-    RabbitMqModule,
     AuthModule,
     EmployeesModule,
     HolidaysModule,
     DepartmentsModule,
     JobPositionsModule,
     AttendanceModule,
-    MonitoringModule,
+    ReportsModule,
+    NotificationModule,
+    CacheConfigModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, SeedService],
 })
 export class AppModule {}
