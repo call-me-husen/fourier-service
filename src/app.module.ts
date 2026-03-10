@@ -20,6 +20,8 @@ import { ReportsModule } from './v1/modules/reports/reports.module';
 import { NotificationModule } from './common/modules/notification.module';
 import { CacheConfigModule } from './common/modules/cache-config.module';
 import { AuditModule } from './common/modules/audit.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -72,5 +74,7 @@ import { AuditModule } from './common/modules/audit.module';
     CacheConfigModule,
     AuditModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
