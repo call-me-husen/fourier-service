@@ -14,6 +14,7 @@ import {
   AttendanceResponseDto,
   MyAttendanceResponseDto,
 } from './dto/attendance-response.dto';
+import { HolidayResponseDto } from '../holidays/dto/holiday-response.dto';
 
 @ApiTags('Attendance')
 @ApiBearerAuth()
@@ -75,6 +76,7 @@ export class AttendanceController {
     return {
       attendances: AttendanceResponseDto.fromMany(result.attendances),
       stats: result.stats,
+      holidays: HolidayResponseDto.fromEntities(result.holidays),
     };
   }
 }

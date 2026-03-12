@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { HolidayResponseDto } from '../../holidays/dto/holiday-response.dto';
 
 type AttendanceLike = {
   id: string;
@@ -34,6 +35,9 @@ export class MyAttendanceResponseDto {
 
   @ApiProperty({ type: () => AttendanceStatsDto })
   stats: AttendanceStatsDto;
+
+  @ApiProperty({ type: () => HolidayResponseDto, isArray: true })
+  holidays: HolidayResponseDto[];
 }
 
 export class AttendanceResponseDto {
