@@ -36,6 +36,11 @@ async function bootstrap() {
     .setDescription('Employee attendance management system API')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('access_token', {
+      type: 'apiKey',
+      in: 'cookie',
+      description: 'JWT token received from signin endpoint',
+    })
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
