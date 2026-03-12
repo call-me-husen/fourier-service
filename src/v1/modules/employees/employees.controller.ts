@@ -14,8 +14,10 @@ import {
   UnauthorizedException,
   UploadedFile,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -163,6 +165,7 @@ export class EmployeesController {
   async changePassword(
     @CurrentUser() user: Employee,
     @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const employee = await this.employeeService.findById(user.id);
     if (!employee) {
@@ -183,6 +186,9 @@ export class EmployeesController {
       },
       user,
     );
+    res.clearCookie('access_token', {
+      path: '/',
+    });
     return { message: 'Password changed successfully' };
   }
 
