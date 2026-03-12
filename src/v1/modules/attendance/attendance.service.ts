@@ -23,6 +23,7 @@ type AttendanceStats = {
 type MyAttendanceResult = {
   attendances: AttendanceWithStatus[];
   stats: AttendanceStats;
+  holidays: Holiday[];
 };
 
 @Injectable()
@@ -248,10 +249,16 @@ export class AttendanceService {
         order: { date: 'DESC' },
       });
 
+      const holidays = await this.holidayRepository.find({
+        where: { date: Between(startDate, endDate) },
+        order: { date: 'ASC' },
+      });
+
       const attendancesWithStatus = this.toAttendancesWithStatus(attendances);
       return {
         attendances: attendancesWithStatus,
         stats: await this.buildStats(attendancesWithStatus, month, year),
+        holidays,
       };
     }
 
@@ -260,11 +267,27 @@ export class AttendanceService {
       order: { date: 'DESC' },
     });
 
+    let holidays: Holiday[] = [];
+    if (attendances.length > 0) {
+      const dates = attendances.map((attendance) => dayjs(attendance.date));
+      const sortedDates = dates.sort(
+        (left, right) => left.valueOf() - right.valueOf(),
+      );
+      const startDate = sortedDates[0].format('YYYY-MM-DD');
+      const endDate = sortedDates[sortedDates.length - 1].format('YYYY-MM-DD');
+
+      holidays = await this.holidayRepository.find({
+        where: { date: Between(startDate, endDate) },
+        order: { date: 'ASC' },
+      });
+    }
+
     const attendancesWithStatus = this.toAttendancesWithStatus(attendances);
 
     return {
       attendances: attendancesWithStatus,
       stats: await this.buildStats(attendancesWithStatus),
+      holidays,
     };
   }
 }
