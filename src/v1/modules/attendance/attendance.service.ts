@@ -5,7 +5,7 @@ import { Attendance } from '../../../shared/entities/attendance.entity';
 import { Holiday } from '../../../shared/entities/holiday.entity';
 import dayjs from 'dayjs';
 
-type AttendanceStatus = 'present' | 'incomplete';
+type AttendanceStatus = 'present' | 'incomplete' | 'holiday';
 
 type AttendanceWithStatus = Attendance & {
   status: AttendanceStatus;
@@ -95,6 +95,9 @@ export class AttendanceService {
     month?: number,
     year?: number,
   ): Promise<AttendanceStats> {
+    const today = dayjs().startOf('day');
+    const yesterday = today.subtract(1, 'day');
+
     const present = attendances.filter(
       (attendance) => attendance.status === 'present',
     ).length;
@@ -124,29 +127,73 @@ export class AttendanceService {
     let holidays = 0;
 
     if (month && year) {
-      const start = dayjs(`${year}-${month}-01`).startOf('month');
-      const end = dayjs(`${year}-${month}-01`).endOf('month');
+      const monthStart = dayjs(`${year}-${month}-01`).startOf('month');
+      const monthEnd = dayjs(`${year}-${month}-01`).endOf('month');
+
       const holidayDates = await this.getHolidayDateSet(
-        start.format('YYYY-MM-DD'),
-        end.format('YYYY-MM-DD'),
+        monthStart.format('YYYY-MM-DD'),
+        monthEnd.format('YYYY-MM-DD'),
       );
       holidays = holidayDates.size;
-      const workingDays = this.countWorkingDays(start, end, holidayDates);
-      absent = Math.max(workingDays - attendances.length, 0);
+
+      let start = monthStart;
+      let end = monthEnd;
+
+      if (end.isAfter(yesterday)) {
+        end = yesterday;
+      }
+      if (start.isAfter(yesterday)) {
+        start = yesterday.add(1, 'day');
+      }
+
+      if (start.isBefore(end) || start.isSame(end, 'day')) {
+        const workingDays = this.countWorkingDays(start, end, holidayDates);
+        const attendedDays = attendances.filter((a) => {
+          const attendanceDate = dayjs(a.date);
+          return (
+            (attendanceDate.isAfter(start) ||
+              attendanceDate.isSame(start, 'day')) &&
+            (attendanceDate.isBefore(end) || attendanceDate.isSame(end, 'day'))
+          );
+        }).length;
+        absent = Math.max(workingDays - attendedDays, 0);
+      }
     } else if (attendances.length > 0) {
       const dates = attendances.map((attendance) => dayjs(attendance.date));
       const sortedDates = dates.sort(
         (left, right) => left.valueOf() - right.valueOf(),
       );
-      const start = sortedDates[0];
-      const end = sortedDates[sortedDates.length - 1];
+      const rangeStart = sortedDates[0];
+      const rangeEnd = sortedDates[sortedDates.length - 1];
+
       const holidayDates = await this.getHolidayDateSet(
-        start.format('YYYY-MM-DD'),
-        end.format('YYYY-MM-DD'),
+        rangeStart.format('YYYY-MM-DD'),
+        rangeEnd.format('YYYY-MM-DD'),
       );
       holidays = holidayDates.size;
-      const workingDays = this.countWorkingDays(start, end, holidayDates);
-      absent = Math.max(workingDays - attendances.length, 0);
+
+      let start = rangeStart;
+      let end = rangeEnd;
+
+      if (end.isAfter(yesterday)) {
+        end = yesterday;
+      }
+      if (start.isAfter(yesterday)) {
+        start = yesterday.add(1, 'day');
+      }
+
+      if (start.isBefore(end) || start.isSame(end, 'day')) {
+        const workingDays = this.countWorkingDays(start, end, holidayDates);
+        const attendedDays = attendances.filter((a) => {
+          const attendanceDate = dayjs(a.date);
+          return (
+            (attendanceDate.isAfter(start) ||
+              attendanceDate.isSame(start, 'day')) &&
+            (attendanceDate.isBefore(end) || attendanceDate.isSame(end, 'day'))
+          );
+        }).length;
+        absent = Math.max(workingDays - attendedDays, 0);
+      }
     }
 
     return {
@@ -221,6 +268,22 @@ export class AttendanceService {
 
   async getTodayAttendance(employeeId: string) {
     const today = dayjs().format('YYYY-MM-DD');
+
+    const holiday = await this.holidayRepository.findOne({
+      where: { date: today },
+    });
+
+    if (holiday) {
+      return {
+        id: '',
+        employee: { id: employeeId } as any,
+        date: today,
+        clockIn: null,
+        clockOut: null,
+        status: 'holiday' as const,
+      };
+    }
+
     const attendance = await this.attendanceRepository.findOne({
       where: { employee: { id: employeeId }, date: today },
     });

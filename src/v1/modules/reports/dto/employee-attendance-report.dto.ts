@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { EmployeeResponseDto } from '../../employees/dto/employee-response.dto';
+import { HolidayResponseDto } from '../../holidays/dto/holiday-response.dto';
 
 export class EmployeeAttendanceItemDto {
   @ApiProperty({ example: '2026-01-05' })
@@ -44,4 +45,7 @@ export class EmployeeAttendanceReportDto {
 
   @ApiProperty({ type: () => EmployeeAttendanceStatsDto })
   stats: EmployeeAttendanceStatsDto;
+
+  @ApiProperty({ type: () => HolidayResponseDto, isArray: true })
+  holidays: HolidayResponseDto[];
 }
