@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   IsDateString,
   IsOptional,
@@ -17,9 +17,22 @@ export class AttendanceReportQueryDto {
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => {
+    if (value === 'undefined' || value === 'null' || value === '') {
+      return undefined;
+    }
+    return value;
+  })
   employeeName?: string;
 
   @IsOptional()
+  @IsString()
+  @Transform(({ value }) => {
+    if (value === 'undefined' || value === 'null' || value === '') {
+      return undefined;
+    }
+    return value;
+  })
   @IsUUID()
   departmentId?: string;
 

@@ -13,6 +13,7 @@ import { AttendanceReportQueryDto } from './dto/attendance-report-query.dto';
 import { AttendanceSummaryReportDto } from './dto/attendance-summary-report.dto';
 import { EmployeeAttendanceReportDto } from './dto/employee-attendance-report.dto';
 import { EmployeeResponseDto } from '../employees/dto/employee-response.dto';
+import { HolidayResponseDto } from '../holidays/dto/holiday-response.dto';
 
 @Injectable()
 export class ReportService {
@@ -24,6 +25,43 @@ export class ReportService {
     @InjectRepository(Holiday)
     private holidayRepository: Repository<Holiday>,
   ) {}
+
+  private calculateAbsentDays(
+    attendances: Attendance[],
+    start: dayjs.Dayjs,
+    end: dayjs.Dayjs,
+    holidayDates: Set<string>,
+  ): number {
+    const today = dayjs().startOf('day');
+    const yesterday = today.subtract(1, 'day');
+
+    let effectiveStart = start;
+    let effectiveEnd = end;
+
+    if (end.isAfter(yesterday)) {
+      effectiveEnd = yesterday;
+    }
+    if (start.isAfter(yesterday)) {
+      return 0;
+    }
+
+    const workingDays = this.getWorkingDays(
+      effectiveStart,
+      effectiveEnd,
+      holidayDates,
+    );
+    const attendedDays = attendances.filter((a) => {
+      const attendanceDate = dayjs(a.date);
+      return (
+        (attendanceDate.isAfter(effectiveStart) ||
+          attendanceDate.isSame(effectiveStart, 'day')) &&
+        (attendanceDate.isBefore(effectiveEnd) ||
+          attendanceDate.isSame(effectiveEnd, 'day'))
+      );
+    }).length;
+
+    return Math.max(workingDays - attendedDays, 0);
+  }
 
   async getAttendanceReport(
     query: AttendanceReportQueryDto,
@@ -64,10 +102,17 @@ export class ReportService {
       .take(limit)
       .getManyAndCount();
 
+    const holidayDates = await this.getHolidayDates(
+      start.format('YYYY-MM-DD'),
+      end.format('YYYY-MM-DD'),
+    );
+    const totalWorkingDays = this.getWorkingDays(start, end, holidayDates);
+
     if (employees.length === 0) {
-      const holidayDates = await this.getHolidayDates(
-        start.format('YYYY-MM-DD'),
-        end.format('YYYY-MM-DD'),
+      const effectiveWorkingDays = this.getWorkingDaysForAbsent(
+        start,
+        end,
+        holidayDates,
       );
       return {
         items: [],
@@ -75,17 +120,12 @@ export class ReportService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
-        workingDays: this.getWorkingDays(start, end, holidayDates),
+        workingDays: effectiveWorkingDays,
         holidays: holidayDates.size,
       };
     }
 
     const employeeIds = employees.map((employee) => employee.id);
-    const holidayDates = await this.getHolidayDates(
-      start.format('YYYY-MM-DD'),
-      end.format('YYYY-MM-DD'),
-    );
-    const workingDays = this.getWorkingDays(start, end, holidayDates);
 
     const attendances = await this.attendanceRepository.find({
       where: {
@@ -107,7 +147,12 @@ export class ReportService {
       const incompleteDays = employeeAttendances.filter(
         (attendance) => attendance.clockIn && !attendance.clockOut,
       ).length;
-      const absentDays = Math.max(workingDays - employeeAttendances.length, 0);
+      const absentDays = this.calculateAbsentDays(
+        employeeAttendances,
+        start,
+        end,
+        holidayDates,
+      );
 
       const durations = employeeAttendances
         .filter((attendance) => attendance.clockIn && attendance.clockOut)
@@ -150,7 +195,7 @@ export class ReportService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      workingDays,
+      workingDays: totalWorkingDays,
       holidays: holidayDates.size,
     };
   }
@@ -164,6 +209,27 @@ export class ReportService {
     });
 
     return new Set(holidays.map((holiday) => holiday.date));
+  }
+
+  private getWorkingDaysForAbsent(
+    start: dayjs.Dayjs,
+    end: dayjs.Dayjs,
+    holidayDates: Set<string>,
+  ): number {
+    const today = dayjs().startOf('day');
+    const yesterday = today.subtract(1, 'day');
+
+    let effectiveStart = start;
+    let effectiveEnd = end;
+
+    if (end.isAfter(yesterday)) {
+      effectiveEnd = yesterday;
+    }
+    if (start.isAfter(yesterday)) {
+      return 0;
+    }
+
+    return this.getWorkingDays(effectiveStart, effectiveEnd, holidayDates);
   }
 
   private getWorkingDays(
@@ -215,11 +281,13 @@ export class ReportService {
       order: { date: 'ASC' },
     });
 
-    const holidayDates = await this.getHolidayDates(
-      start.format('YYYY-MM-DD'),
-      end.format('YYYY-MM-DD'),
-    );
-    const workingDays = this.getWorkingDays(start, end, holidayDates);
+    const holidays = await this.holidayRepository.find({
+      where: {
+        date: Between(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD')),
+      },
+      order: { date: 'ASC' },
+    });
+    const holidayDates = new Set(holidays.map((h) => h.date));
 
     const present = attendances.filter(
       (attendance) => attendance.clockIn && attendance.clockOut,
@@ -227,7 +295,12 @@ export class ReportService {
     const incomplete = attendances.filter(
       (attendance) => attendance.clockIn && !attendance.clockOut,
     ).length;
-    const absent = Math.max(workingDays - attendances.length, 0);
+    const absent = this.calculateAbsentDays(
+      attendances,
+      start,
+      end,
+      holidayDates,
+    );
 
     const durations = attendances
       .filter((attendance) => attendance.clockIn && attendance.clockOut)
@@ -262,6 +335,7 @@ export class ReportService {
         totalDurationMinutes,
         averageDurationMinutes,
       },
+      holidays: HolidayResponseDto.fromEntities(holidays),
     };
   }
 }

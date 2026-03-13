@@ -6,7 +6,7 @@ type AttendanceLike = {
   date: string;
   clockIn?: Date | null;
   clockOut?: Date | null;
-  status: 'present' | 'incomplete';
+  status: 'present' | 'incomplete' | 'holiday';
 };
 
 export class AttendanceStatsDto {
@@ -53,8 +53,11 @@ export class AttendanceResponseDto {
   @ApiProperty({ example: '2026-03-09T17:08:00.000Z', nullable: true })
   clockOut: Date | null;
 
-  @ApiProperty({ enum: ['present', 'incomplete'], example: 'present' })
-  status: 'present' | 'incomplete';
+  @ApiProperty({
+    enum: ['present', 'incomplete', 'holiday'],
+    example: 'present',
+  })
+  status: 'present' | 'incomplete' | 'holiday';
 
   static fromData(
     attendance: AttendanceLike | null | undefined,
