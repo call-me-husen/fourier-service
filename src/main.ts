@@ -1,8 +1,9 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,28 +13,39 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const reflector = app.get(Reflector);
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
 
   app.setGlobalPrefix('api');
 
-  // Global validation pipe to validate incoming requests
-  // whitelist: true - strips properties that do not have any decorators
-  // transform: true - transforms payloads to be objects typed according to their DTO classes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  // Centralised response shape: { code, message, data }
-  app.useGlobalInterceptors(new ResponseInterceptor(reflector));
+  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Centralised error shape: { code, message }
-  app.useGlobalFilters(new HttpExceptionFilter());
+  const config = new DocumentBuilder()
+    .setTitle('Fourier Attendance API')
+    .setDescription('Employee attendance management system API')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addCookieAuth('access_token', {
+      type: 'apiKey',
+      in: 'cookie',
+      description: 'JWT token received from signin endpoint',
+    })
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   await app.listen(process.env.PORT ?? 4000);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-bootstrap();
+void bootstrap();
